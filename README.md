@@ -16,6 +16,12 @@
 
 3. ./toric_earth_run
 
+## Object control
+
+:arrow_up: :arrow_down: :arrow_left: :arrow_right:
+
+
+
 
 
 
