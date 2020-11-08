@@ -18,6 +18,8 @@
 
 ## Object control
 
+You can move the object with the arrows:
+
 :arrow_up: :arrow_down: :arrow_left: :arrow_right:
 
 
