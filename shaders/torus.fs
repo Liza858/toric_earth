@@ -1,7 +1,7 @@
 #version 330 core
 
 
-in vec3 n;
+in vec3 norm;
 in vec3 texture_coords;
 in float dist;
 
@@ -24,7 +24,7 @@ uniform int tex3_repeat_count;
 
 
 void main() {
-    int coef = 5;
+    int coef = 2;
 
     float x1 = texture_coords.x * tex1_repeat_count - floor(texture_coords.x * tex1_repeat_count);
     float y1 = texture_coords.y * tex1_repeat_count * coef - floor(texture_coords.y * tex1_repeat_count * coef);
@@ -45,10 +45,10 @@ void main() {
     vec4 detail_color2 = texture(detail_tex1, vec2(xx, yy));
     vec4 detail_color3 = texture(detail_tex1, vec2(xx, yy));
 
-    if (texture_coords.z < 4.0 / 3.0) {
+    if (texture_coords.z < 2.0 / 3.0 * 2.2) {
         gl_FragColor = tex_color1;
-    } else if (texture_coords.z < 4.0 / 3.0 * 2) {
-        gl_FragColor = tex_color2;
+    } else if (texture_coords.z < 2 / 3.0 * 2.5) {
+        gl_FragColor = tex_color3;
     } else {
         gl_FragColor = tex_color3;
     }

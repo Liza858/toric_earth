@@ -12,11 +12,21 @@ class Object {
 
   private:
 
+  float object_scale = 0.005;
+
   size_t vertices_count;
 
   GLuint vbo;
   GLuint vao;
   GLuint ebo;
+
+  float min_x = std::numeric_limits<float>::max();
+  float min_y = std::numeric_limits<float>::max();
+  float min_z = std::numeric_limits<float>::max();
+
+  float max_x = std::numeric_limits<float>::min();
+  float max_y = std::numeric_limits<float>::min();
+  float max_z = std::numeric_limits<float>::min();
 
   public:
 
@@ -35,7 +45,7 @@ class Object {
 
         for (size_t i = 0, j = 0, k = 0; k < vertices_indices.size() * 8; i += 3, j += 2, k+=8) {
             triangle_vertices[k] = vertices[i];
-            triangle_vertices[k + 1] = vertices[i+ 1];
+            triangle_vertices[k + 1] = vertices[i + 1];
             triangle_vertices[k + 2] = vertices[i  + 2];
  
             triangle_vertices[k + 3] = normals[i];
@@ -71,6 +81,47 @@ class Object {
         this->vbo = vbo;
         this->vao = vao;
         this->ebo = ebo;
+
+        compute_min_max(vertices);
+  }
+
+
+  void compute_min_max(const std::vector<float>& vertices) {
+      for (size_t i = 0; i < vertices.size(); i+=3) {
+          float x = vertices[i];
+          float y = vertices[i + 1];
+          float z = vertices[i + 2];
+          min_x = min(min_x, x);
+          min_y = min(min_y, y);
+          min_z = min(min_z, z);
+          max_x = max(max_x, x);
+          max_y = max(max_y, y);
+          max_z = min(max_z, z);
+      }
+  }
+
+  glm::vec3 get_center() {
+      return {
+          (max_x + min_x) / 2,
+          (max_y + min_y) / 2, 
+          (max_z + min_z) / 2
+      };
+  }
+
+  glm::vec3 get_bottom_center() {
+      return {
+          (max_x + min_x) / 2,
+          (max_y + min_y) / 2, 
+          min_z
+      };
+  }
+
+  float get_bottom_height() {
+     return -min_y * object_scale;
+  }
+
+  float get_scale() {
+      return object_scale;
   }
 
   void render(shader_t& shader, GLuint texture, GLuint cubemap_texture) {
@@ -86,15 +137,17 @@ class Object {
         shader.use();
         glBindVertexArray(vao);
 
-     //   cout << glGetError() << endl;
-
         glDrawElements(GL_TRIANGLES, vertices_count, GL_UNSIGNED_INT, 0);
-
-
-    //    cout << glGetError() << endl;
   }
 
+  glm::mat4 get_model_matrix() {
+      return glm::rotate(-3.14f / 2.f, glm::vec3(0, 0, 1)) *
+             glm::rotate(-3.14f / 2.f, glm::vec3(1, 0, 0)) * 
+             glm::rotate(3.14f, glm::vec3(0, 0, 1)) * 
+             glm::scale(glm::vec3(object_scale, object_scale, object_scale));
+  }
 };
+
 
 class ObjLoader {
 
@@ -146,5 +199,4 @@ class ObjLoader {
   
        return Object(vertices, normals, colors, vertices_indices);
     }
-
 };

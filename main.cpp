@@ -21,12 +21,15 @@
 #include <glm/gtx/transform.hpp>
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <glm/gtx/rotate_vector.hpp>
 
 #include "opengl_shader.h"
 #include "environment.h"
 #include "textures.h"
 #include "object_loader.h"
 #include "torus.h"
+#include "map.h"
+
 
 float mouse_offset_x = 0.0;
 float mouse_offset_y = 0.0;
@@ -35,7 +38,7 @@ float angle_x = 0.0;
 float angle_y = 0.0;
 
 int zoom_sensitivity = 10;
-float zoom = 0.1;
+float zoom = 1;
 
 double mouse_prev_x = 0.0;
 double mouse_prev_y = 0.0;
@@ -43,11 +46,14 @@ double mouse_prev_y = 0.0;
 bool button_is_pressed = false;
 
 float detail_coef = 2.1;
-float detail_dist = 0.2;
-int detail_repeat_count = 10;
+float detail_dist = 3.0;
+int detail_repeat_count = 80;
 int tex1_repeat_count = 3;
-int tex2_repeat_count = 3;
-int tex3_repeat_count = 3;
+int tex2_repeat_count = 6;
+int tex3_repeat_count = 6;
+float spring_coef = 0.15;
+
+
 
 static void glfw_error_callback(int error, const char *description)
 {
@@ -95,6 +101,8 @@ void mouse_button_callback(GLFWwindow* window, int action)
 }
 
 
+
+
 int main(int, char **)
 {
    // Use GLFW to create a simple window
@@ -131,18 +139,18 @@ int main(int, char **)
    shader_t obj_shader("obj.vs", "obj.fs");
 
    std::array<std::string, 6> env_textures = {
-      "../environment/right.jpg",
-      "../environment/left.jpg",
-      "../environment/top.jpg",
-      "../environment/bottom.jpg",
-      "../environment/front.jpg",
-      "../environment/back.jpg"
+      "../environment/space1.jpg",
+      "../environment/space1.jpg",
+      "../environment/space1.jpg",
+      "../environment/space1.jpg",
+      "../environment/space1.jpg",
+      "../environment/space1.jpg"
    };
 
    GLuint cubemap_texture = CubemapTextureLoader::load(env_textures);
-   //GLuint obj_textute = TextureLoader::load("../objects/fish.jpg");
+   GLuint obj_textute = TextureLoader::load("../objects/Lexus.jpg");
 
-   //Object obj = ObjLoader::load("../objects/", "../objects/fish.obj");
+   Object obj = ObjLoader::load("../objects/", "../objects/lexus_hs.obj");
 
    Environment env;
 
@@ -176,12 +184,14 @@ int main(int, char **)
    ImGui_ImplOpenGL3_Init(glsl_version);
    ImGui::StyleColorsDark();
 
-   static float n_env = 1.0;
-   static float n_obj = 1.33;
-   static float color_intensivity = 0.2;
 
    glDepthFunc(GL_LEQUAL);
    glEnable(GL_DEPTH_TEST);
+
+
+
+   Map map(torus);
+   glm::vec3 camera_pos = {100, 100, 100};
 
    while (!glfwWindowShouldClose(window))
    {
@@ -208,10 +218,11 @@ int main(int, char **)
       ImGui::SliderInt("zoom sensitivity, %", &zoom_sensitivity, 0, 100);
       ImGui::SliderFloat("detail_coef", &detail_coef, 0, 5);
       ImGui::SliderInt("detail_repeat_count", &detail_repeat_count, 1, 100);
-      ImGui::SliderFloat("detail_dist", &detail_dist, 0, 1);
+      ImGui::InputFloat("detail_dist", &detail_dist);
       ImGui::SliderInt("tex1_repeat_count", &tex1_repeat_count, 1, 100);
       ImGui::SliderInt("tex2_repeat_count", &tex2_repeat_count, 1, 100);
       ImGui::SliderInt("tex3_repeat_count", &tex3_repeat_count, 1, 100);
+      ImGui::SliderFloat("spring_coef", &spring_coef, 0.05f, 1.f);
       ImGui::End();
 
         
@@ -221,33 +232,89 @@ int main(int, char **)
           mouse_button_callback(window, mouse_action);
       }
 
-      glm::vec4 camera(0, 0, 1, 1);
-      auto x_rot = glm::rotate(glm::mat4(1), glm::radians(angle_x), glm::vec3(0, 1, 0));
-      camera = x_rot * camera;
-      camera = glm::rotate(glm::mat4(1), glm::radians(angle_y), glm::vec3(x_rot * glm::vec4(1, 0, 0, 1))) * camera;
-      auto model = glm::scale(glm::vec3(zoom, zoom, zoom));
-      model = glm::rotate(model, 3.14f / 2.0f, glm::vec3(-1.0f, 0.0f, 0.0f));
-      auto view = glm::lookAt<float>(glm::vec3(camera.x, camera.y, camera.z), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-      auto view_cubemap = glm::lookAt<float>(glm::vec3(0, 0, 0), glm::vec3(-camera.x, -camera.y, -camera.z), glm::vec3(0, 1, 0));
-      auto projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
+      map.buttons_callback();
+      map.move();
 
+     // glm::vec4 camera(0, 0, 1, 1);
+     // auto x_rot = glm::rotate(glm::mat4(1), glm::radians(angle_x), glm::vec3(0, 1, 0));
+     // camera = x_rot * camera;
+     // camera = glm::rotate(glm::mat4(1), glm::radians(angle_y), glm::vec3(x_rot * glm::vec4(1, 0, 0, 1))) * camera;
+     // auto model_torus = glm::rotate(model_torus, 3.14f / 2.0f, glm::vec3(-1.0f, 0.0f, 0.0f));
+     // glm::mat4 view = glm::lookAt<float>(glm::vec3(camera.x, camera.y, camera.z), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+     // auto view_cubemap = glm::lookAt<float>(glm::vec3(0, 0, 0), glm::vec3(-camera.x, -camera.y, -camera.z), glm::vec3(0, 1, 0));
+
+     
+      glm::mat4 projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
+      auto model_torus = torus.get_model_matrix();
+
+
+      auto pos = map.get_point_on_torus();
+      auto dir = map.get_direction_on_torus();
+   
+      auto model_obj = obj.get_model_matrix();
+
+      glm::vec3 bottom_center = glm::vec3(model_obj * glm::vec4(obj.get_bottom_center(), 1));
+      glm::vec3 torus_point = glm::vec3(model_torus * glm::vec4(torus.get_vertex(pos[0], pos[1]), 1));
+      glm::vec3 torus_normal = glm::vec3(model_torus * glm::vec4(torus.get_normal(pos[0], pos[1]), 1));
+
+      auto to_normal = glm::orientation(torus_normal, glm::vec3(1, 0, 0));
+      glm::vec3 new_y = normalize(glm::vec3(to_normal * glm::vec4(0, 1, 0, 0)));
+      glm::vec3 new_x = normalize(glm::vec3(to_normal * glm::vec4(1, 0, 0, 0)));
+      glm::vec3 new_z = normalize(glm::vec3(to_normal * glm::vec4(0, 0, 1, 0)));
+      glm::vec3 torus_dir_x = normalize(map.get_torus_dir_x());
+      glm::vec3 torus_dir_y = normalize(map.get_torus_dir_y());
+      glm::vec3 torus_dir = normalize(map.get_torus_dir());
+
+      auto alpha = acos(dot(new_y, torus_dir_x));
+      auto beta = acos(dot(new_z, torus_dir_x));
+      if (dot(new_z, torus_dir_y) > 0) {
+          beta = -beta;
+      }
+
+      auto rot1 = glm::rotate(beta, new_x);
+      auto rot2 = glm::rotate(map.get_angle() + 3.14f / 2.f, new_x);
+      model_obj = glm::translate(torus_point - bottom_center) * rot2 * rot1 * to_normal * model_obj;
+
+
+      auto model_camera = torus.get_translation_matrix(pos, obj) * 
+                          map.get_rotation_matrix() * 
+                          obj.get_model_matrix();
+
+      glm::vec3 next_camera_pos = glm::vec3(torus.get_translation_matrix(pos, obj) * glm::vec4(0.7, dir.x / 2.f, dir.y / 2.f, 1));
+
+      float distanse = glm::distance(camera_pos, next_camera_pos);
+      glm::vec3 shift = glm::normalize(next_camera_pos - camera_pos) * distanse * spring_coef;
+      camera_pos = distanse < 0.07f ? camera_pos : camera_pos + shift;
+      if (distanse > 5) { camera_pos = next_camera_pos; }
+      
+      auto view = glm::lookAt(
+         camera_pos,
+         glm::vec3(torus.get_translation_matrix(pos, obj) * glm::vec4(0, 0, 0, 1)),
+         glm::vec3(model_camera * glm::vec4(-1, 0, 0, 0))
+      );
 
       glClear(unsigned(GL_COLOR_BUFFER_BIT) | unsigned(GL_DEPTH_BUFFER_BIT));
 
 
       // отключаем тест глубины, чтобы все рисовалось поверх environment
       glDepthMask(GL_FALSE);
+
+      // рисуем окружение
+
       env_shader.use();
       env_shader.set_uniform("projection", glm::value_ptr(projection));
-      env_shader.set_uniform("view", glm::value_ptr(view_cubemap));
-      env_shader.set_uniform("camera_pos", camera.x, camera.y, camera.z);
+      env_shader.set_uniform("view", glm::value_ptr(view));
       env_shader.set_uniform("environment", 1);
+
       env.render(env_shader, cubemap_texture);
+
       glDepthMask(GL_TRUE);
 
 
+      // рисуем тор
+     
       torus_shader.use();
-      torus_shader.set_uniform("model", glm::value_ptr(model));
+      torus_shader.set_uniform("model", glm::value_ptr(model_torus));
       torus_shader.set_uniform("view", glm::value_ptr(view));
       torus_shader.set_uniform("projection", glm::value_ptr(projection));
       torus_shader.set_uniform("detail_coef", detail_coef);
@@ -258,6 +325,19 @@ int main(int, char **)
       torus_shader.set_uniform("tex3_repeat_count", tex3_repeat_count);
 
       torus.render(torus_shader);
+
+
+      // рисуем объект
+
+      obj_shader.use();
+      obj_shader.set_uniform("model", glm::value_ptr(model_obj));
+      obj_shader.set_uniform("view", glm::value_ptr(view));
+      obj_shader.set_uniform("projection", glm::value_ptr(projection));
+      obj_shader.set_uniform("obj_texture", 0);
+      obj_shader.set_uniform("cubemap_texture", 1);
+
+      obj.render(obj_shader, obj_textute, cubemap_texture);
+
 
       glBindVertexArray(0);
 

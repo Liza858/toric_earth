@@ -13,6 +13,7 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
+
 void main() {
 
     out_normal = mat3(transpose(inverse(model))) * normal;

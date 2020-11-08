@@ -23,6 +23,7 @@ add_executable( toric_earth_run
                 opengl_shader.cpp
                 opengl_shader.h
                 torus.h
+                map.h
                 bindings/imgui_impl_glfw.cpp
                 bindings/imgui_impl_opengl3.cpp
                 bindings/imgui_impl_glfw.h
