@@ -13,7 +13,7 @@ class Map {
 
     private:
     
-    glm::vec2 position = glm::vec2(150, 150);
+    glm::vec2 position = glm::vec2(750, 150);
     glm::vec2 direction = glm::vec2(0, 1);
 
     float alpha = 0.0f;
@@ -28,7 +28,7 @@ class Map {
 
     void move() {
 
-        position += direction * speed;
+        position += glm::vec2(direction[0], direction[1]) * speed;
 
         if (position[0] >= torus.get_y_count()) {
             position[0] = 0;
