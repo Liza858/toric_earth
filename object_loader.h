@@ -124,6 +124,14 @@ class Object {
       return object_scale;
   }
 
+  float get_width() {
+      return max_x - min_x;
+  }
+
+  float get_height() {
+      return max_z - min_z;
+  }
+
   void render(shader_t& shader, GLuint texture, GLuint cubemap_texture) {
 
         glActiveTexture(GL_TEXTURE0);
@@ -138,6 +146,11 @@ class Object {
         glBindVertexArray(vao);
 
         glDrawElements(GL_TRIANGLES, vertices_count, GL_UNSIGNED_INT, 0);
+  }
+
+  void render() {
+      glBindVertexArray(vao);
+      glDrawElements(GL_TRIANGLES, vertices_count, GL_UNSIGNED_INT, 0);
   }
 
   glm::mat4 get_model_matrix() {

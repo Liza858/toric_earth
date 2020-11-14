@@ -24,6 +24,7 @@ add_executable( toric_earth_run
                 opengl_shader.h
                 torus.h
                 map.h
+                shadow_map.h
                 bindings/imgui_impl_glfw.cpp
                 bindings/imgui_impl_opengl3.cpp
                 bindings/imgui_impl_glfw.h
@@ -34,6 +35,8 @@ add_executable( toric_earth_run
                 shaders/obj.fs
                 shaders/torus.vs
                 shaders/torus.fs
+                shaders/shadow.vs
+                shaders/shadow.fs
 )
 
 add_custom_command(TARGET toric_earth_run
@@ -44,6 +47,8 @@ add_custom_command(TARGET toric_earth_run
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/shaders/obj.fs ${PROJECT_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/shaders/torus.vs ${PROJECT_BINARY_DIR}
     COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/shaders/torus.fs ${PROJECT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/shaders/shadow.vs ${PROJECT_BINARY_DIR}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PROJECT_SOURCE_DIR}/shaders/shadow.fs ${PROJECT_BINARY_DIR}
 )
 
 target_compile_definitions(toric_earth_run PUBLIC IMGUI_IMPL_OPENGL_LOADER_GLEW)

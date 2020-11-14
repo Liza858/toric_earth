@@ -9,14 +9,14 @@ out vec3 out_position;
 out vec2 out_tex_coords;
 
 
+
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
 
 void main() {
-
-    out_normal = mat3(transpose(inverse(model))) * normal;
+    out_normal = normalize(mat3(transpose(inverse(model))) * normal);
     out_position = vec3(model * vec4(position, 1.0));
     out_tex_coords = tex_coords;
     gl_Position =  projection * view * model * vec4(position, 1.0);

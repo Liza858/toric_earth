@@ -29,6 +29,7 @@
 #include "object_loader.h"
 #include "torus.h"
 #include "map.h"
+#include "shadow_map.h"
 
 
 float mouse_offset_x = 0.0;
@@ -52,6 +53,8 @@ int tex1_repeat_count = 3;
 int tex2_repeat_count = 6;
 int tex3_repeat_count = 6;
 float spring_coef = 0.15;
+
+int enable = 1;
 
 
 
@@ -137,6 +140,7 @@ int main(int, char **)
    shader_t env_shader("environment.vs", "environment.fs");
    shader_t torus_shader("torus.vs", "torus.fs");
    shader_t obj_shader("obj.vs", "obj.fs");
+   shader_t shadow_shader("shadow.vs", "shadow.fs");
 
    std::array<std::string, 6> env_textures = {
       "../environment/space1.jpg",
@@ -175,6 +179,10 @@ int main(int, char **)
       detail_textures
    );
 
+   Shadow_map near_shadow_map;
+   Shadow_map far_shadow_map;
+   Shadow_map object_shadow_map;
+
 
    // Setup GUI context
    IMGUI_CHECKVERSION();
@@ -188,7 +196,8 @@ int main(int, char **)
    glDepthFunc(GL_LEQUAL);
    glEnable(GL_DEPTH_TEST);
 
-
+   float a1, a2, a3, a4, a5, a6;
+   a1 = a2 = a3 = a4 = a5 = a6 = 0.2;
 
    Map map(torus);
    glm::vec3 camera_pos = {100, 100, 100};
@@ -223,6 +232,13 @@ int main(int, char **)
       ImGui::SliderInt("tex2_repeat_count", &tex2_repeat_count, 1, 100);
       ImGui::SliderInt("tex3_repeat_count", &tex3_repeat_count, 1, 100);
       ImGui::SliderFloat("spring_coef", &spring_coef, 0.05f, 1.f);
+      //ImGui::InputFloat("a1", &a1);
+      //ImGui::InputFloat("a2", &a2);
+      //ImGui::InputFloat("a3", &a3);
+      //ImGui::InputFloat("a4", &a4);
+      //ImGui::InputFloat("a5", &a5);
+      //ImGui::InputFloat("a6", &a6);
+      ImGui::InputInt("enable", &enable);
       ImGui::End();
 
         
@@ -293,6 +309,43 @@ int main(int, char **)
          glm::vec3(model_camera * glm::vec4(-1, 0, 0, 0))
       );
 
+
+
+
+      auto light_near_projection = glm::ortho(-2.f, 2.f, -2.f, 2.f, 0.001f, 2.f);
+      auto light_near_view = glm::lookAt(
+         glm::vec3(torus.get_translation_matrix(pos, obj) * glm::vec4(0, 0, 0, 1)) + glm::vec3(0, 0, 1),
+         glm::vec3(torus.get_translation_matrix(pos, obj) * glm::vec4(0, 0, 0, 1)),
+         glm::vec3(0, 1, 0)
+      );
+      auto light_object_view = glm::lookAt(
+         glm::vec3(model_obj * glm::vec4(0.001, 0, 20.f, 1)),
+         glm::vec3(model_obj * glm::vec4(0, 0, 20.f, 1)),
+         glm::vec3(model_obj * glm::vec4(-1, 0, 0, 0))
+      );
+
+      glm::mat4 light_far_projection = glm::ortho(-15.f, 15.f, -15.f, 15.f, 0.001f, 15.f);
+      glm::mat4 light_far_view = glm::lookAt(glm::vec3(0, 0, 10), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
+      glm::mat4 light_object_projection = glm::perspective(glm::radians(90.f), 1.f, 0.001f, 1.f);
+      
+      auto vp_near = light_near_projection * light_near_view;
+      auto vp_far = light_far_projection * light_far_view;
+      auto vp_object = light_object_projection * light_object_view;;
+
+      auto torus_mvp = vp_near * model_torus;
+      auto object_mvp = vp_near * model_obj;
+      near_shadow_map.render(shadow_shader, torus, obj, torus_mvp, object_mvp);
+      torus_mvp = vp_far * model_torus;
+      object_mvp = vp_far * model_obj;
+      far_shadow_map.render(shadow_shader, torus, obj, torus_mvp, object_mvp);
+      torus_mvp = vp_object * model_torus;
+      object_mvp = vp_object * model_obj;
+      object_shadow_map.render(shadow_shader, torus, obj, torus_mvp, object_mvp);
+
+
+
+     
+      glViewport(0, 0, display_w, display_h);
       glClear(unsigned(GL_COLOR_BUFFER_BIT) | unsigned(GL_DEPTH_BUFFER_BIT));
 
 
@@ -312,7 +365,7 @@ int main(int, char **)
 
 
       // рисуем тор
-     
+      
       torus_shader.use();
       torus_shader.set_uniform("model", glm::value_ptr(model_torus));
       torus_shader.set_uniform("view", glm::value_ptr(view));
@@ -323,6 +376,13 @@ int main(int, char **)
       torus_shader.set_uniform("tex1_repeat_count", tex1_repeat_count);
       torus_shader.set_uniform("tex2_repeat_count", tex2_repeat_count);
       torus_shader.set_uniform("tex3_repeat_count", tex3_repeat_count);
+      torus_shader.set_uniform("near_shadow_map", (int) near_shadow_map.get_id());
+      torus_shader.set_uniform("far_shadow_map", (int) far_shadow_map.get_id());
+      torus_shader.set_uniform("object_shadow_map", (int) object_shadow_map.get_id());
+      torus_shader.set_uniform("mvp_near", glm::value_ptr(vp_near));
+      torus_shader.set_uniform("mvp_far", glm::value_ptr(vp_far));
+      torus_shader.set_uniform("mvp_object", glm::value_ptr(vp_object));
+      torus_shader.set_uniform("enable", enable);
 
       torus.render(torus_shader);
 
@@ -335,7 +395,9 @@ int main(int, char **)
       obj_shader.set_uniform("projection", glm::value_ptr(projection));
       obj_shader.set_uniform("obj_texture", 0);
       obj_shader.set_uniform("cubemap_texture", 1);
-
+      obj_shader.set_uniform("near_shadow_map", (int) near_shadow_map.get_id());
+      obj_shader.set_uniform("mvp_near", glm::value_ptr(vp_near));
+   
       obj.render(obj_shader, obj_textute, cubemap_texture);
 
 

@@ -371,6 +371,11 @@ class Torus
                glm::translate(glm::vec3(r * torus_scale + get_vertex_height(position[0], position[1]), 0, 0));
     }
 
+    void render() {
+        glBindVertexArray(vao);
+        glDrawElements(GL_TRIANGLES, indices_count, GL_UNSIGNED_INT, 0);
+    }
+
    
     void render(shader_t& torus_shader) {
 

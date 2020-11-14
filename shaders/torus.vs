@@ -10,12 +10,14 @@ uniform mat4 projection;
 
 out vec3 norm;
 out vec3 texture_coords;
+out vec3 pos;
 out float dist;
 
 void main() {
 
     norm = normal;
     texture_coords = tex_coords;
+    pos = position;
     gl_Position = projection * view * model * vec4(position, 1.0);
     dist = gl_Position.w;
     
