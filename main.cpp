@@ -22,6 +22,8 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <glm/gtx/rotate_vector.hpp>
+#include <chrono>
+#include <unistd.h>
 
 #include "opengl_shader.h"
 #include "environment.h"
@@ -57,53 +59,10 @@ float spring_coef = 0.15;
 int enable = 1;
 
 
-
 static void glfw_error_callback(int error, const char *description)
 {
    std::cerr << fmt::format("Glfw Error {}: {}\n", error, description);
 }
-
-
-void scroll_callback(GLFWwindow* window, double xoffset, double yoffset)
-{
-   zoom = zoom + yoffset * zoom_sensitivity / 10000.0;
-   if (zoom < 0) {
-      zoom = 0;
-   }
-}
-
-
-void mouse_button_callback(GLFWwindow* window, int action)
-{
-   int display_w, display_h;
-   glfwGetWindowSize(window, &display_w, &display_h);
-    if (action == GLFW_PRESS) {
-         double x, y;
-         glfwGetCursorPos(window, &x, &y);
-         if (button_is_pressed) {
-            mouse_offset_x = x - mouse_prev_x;
-            mouse_offset_y = y - mouse_prev_y;  
-            mouse_prev_x = x;
-            mouse_prev_y = y;
-            angle_x -= mouse_offset_x * 0.25;
-            if (angle_y - mouse_offset_y * 0.25 > 89.9) {
-               angle_y = 89.9;
-            } else if (angle_y - mouse_offset_y * 0.25 < -89.9) {
-               angle_y = -89.9;
-            } else {
-               angle_y -= mouse_offset_y * 0.25;
-            }
-         } else {
-            button_is_pressed = true;
-            mouse_prev_x = x - mouse_offset_x;
-            mouse_prev_y = y - mouse_offset_y;
-         }
-      } else if (action == GLFW_RELEASE) {
-          button_is_pressed = false;
-      }
-}
-
-
 
 
 int main(int, char **)
@@ -135,7 +94,6 @@ int main(int, char **)
       return 1;
    }
 
-   glfwSetScrollCallback(window, scroll_callback);
 
    shader_t env_shader("environment.vs", "environment.fs");
    shader_t torus_shader("torus.vs", "torus.fs");
@@ -199,7 +157,7 @@ int main(int, char **)
    float a1, a2, a3, a4, a5, a6;
    a1 = a2 = a3 = a4 = a5 = a6 = 0.2;
 
-   Map map(torus);
+   Map map(torus, std::chrono::high_resolution_clock::now());
    glm::vec3 camera_pos = {100, 100, 100};
 
    while (!glfwWindowShouldClose(window))
@@ -232,32 +190,12 @@ int main(int, char **)
       ImGui::SliderInt("tex2_repeat_count", &tex2_repeat_count, 1, 100);
       ImGui::SliderInt("tex3_repeat_count", &tex3_repeat_count, 1, 100);
       ImGui::SliderFloat("spring_coef", &spring_coef, 0.05f, 1.f);
-      //ImGui::InputFloat("a1", &a1);
-      //ImGui::InputFloat("a2", &a2);
-      //ImGui::InputFloat("a3", &a3);
-      //ImGui::InputFloat("a4", &a4);
-      //ImGui::InputFloat("a5", &a5);
-      //ImGui::InputFloat("a6", &a6);
       ImGui::InputInt("enable", &enable);
       ImGui::End();
 
         
-      // Mouse button press action
-      if (!(ImGui::IsAnyWindowHovered() || ImGui::IsAnyItemHovered() || ImGui::IsAnyItemActive())) {
-          auto mouse_action = glfwGetMouseButton(window, 0);
-          mouse_button_callback(window, mouse_action);
-      }
-
       map.buttons_callback();
-      map.move();
-
-     // glm::vec4 camera(0, 0, 1, 1);
-     // auto x_rot = glm::rotate(glm::mat4(1), glm::radians(angle_x), glm::vec3(0, 1, 0));
-     // camera = x_rot * camera;
-     // camera = glm::rotate(glm::mat4(1), glm::radians(angle_y), glm::vec3(x_rot * glm::vec4(1, 0, 0, 1))) * camera;
-     // auto model_torus = glm::rotate(model_torus, 3.14f / 2.0f, glm::vec3(-1.0f, 0.0f, 0.0f));
-     // glm::mat4 view = glm::lookAt<float>(glm::vec3(camera.x, camera.y, camera.z), glm::vec3(0, 0, 0), glm::vec3(0, 1, 0));
-     // auto view_cubemap = glm::lookAt<float>(glm::vec3(0, 0, 0), glm::vec3(-camera.x, -camera.y, -camera.z), glm::vec3(0, 1, 0));
+      int d_time = map.move(std::chrono::high_resolution_clock::now());
 
      
       glm::mat4 projection = glm::perspective<float>(90, float(display_w) / display_h, 0.1, 100);
@@ -299,7 +237,7 @@ int main(int, char **)
       glm::vec3 next_camera_pos = glm::vec3(torus.get_translation_matrix(pos, obj) * glm::vec4(0.7, dir.x / 2.f, dir.y / 2.f, 1));
 
       float distanse = glm::distance(camera_pos, next_camera_pos);
-      glm::vec3 shift = glm::normalize(next_camera_pos - camera_pos) * distanse * spring_coef;
+      glm::vec3 shift = glm::normalize(next_camera_pos - camera_pos) * distanse * (spring_coef / map.get_time_delta() * d_time);
       camera_pos = distanse < 0.07f ? camera_pos : camera_pos + shift;
       if (distanse > 5) { camera_pos = next_camera_pos; }
       
@@ -411,6 +349,7 @@ int main(int, char **)
 
       // Swap the backbuffer with the frontbuffer that is used for screen display
       glfwSwapBuffers(window);
+
    }
 
    // Cleanup

@@ -2,6 +2,7 @@
 
 #include <string>
 #include <math.h>
+#include <chrono>
 #include "torus.h"
 #include <glm/gtc/constants.hpp>
 #include <glm/gtx/transform.hpp>
@@ -10,6 +11,8 @@
 
 
 class Map {
+
+    typedef std::chrono::time_point<std::chrono::high_resolution_clock> Time;
 
     private:
     
@@ -21,15 +24,23 @@ class Map {
 
     Torus torus;
 
+    Time prev_time;
+
+    int time_delta = 24370543;
+
+
     public:
     
-    Map(const Torus& torus) : torus(torus) {}
+    Map(const Torus& torus, Time start_time) : torus(torus) , prev_time(start_time) {}
 
 
-    void move() {
+    int move(Time current_time) {
 
-        position += glm::vec2(direction[0], direction[1]) * speed;
+        int d_time = std::chrono::duration_cast<std::chrono::nanoseconds>(current_time - prev_time).count();
 
+        position += glm::vec2(direction[0], direction[1]) * (speed / time_delta * d_time);
+        prev_time = current_time;
+    
         if (position[0] >= torus.get_y_count()) {
             position[0] = 0;
         }
@@ -42,6 +53,8 @@ class Map {
         if (position[1] < 0) {
             position[1] = torus.get_x_count();
         }
+
+        return d_time;
     }
 
 
@@ -51,6 +64,10 @@ class Map {
 
     float get_angle() {
         return alpha;
+    }
+
+    int get_time_delta() {
+        return time_delta;
     }
 
 
